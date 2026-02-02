@@ -9,7 +9,7 @@ public class PersonConfiguration : IEntityTypeConfiguration<Person>
 {
     public void Configure(EntityTypeBuilder<Person> builder)
     {
-        // Tabla con Temporal Tables para audit trail
+        // Temporal Tables para audit trail
         builder.ToTable("Person", tb => tb.IsTemporal(ttb =>
         {
             ttb.HasPeriodStart("SysStartTime");

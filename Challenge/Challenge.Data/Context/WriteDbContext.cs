@@ -10,12 +10,12 @@ namespace Challenge.Data.Context;
 /// </summary>
 public class WriteDbContext : DbContext
 {
-    private readonly int _currentUserId;
+    private readonly ICurrentUserService? _currentUserService;
 
-    public WriteDbContext(DbContextOptions<WriteDbContext> options, int currentUserId = 0)
+    public WriteDbContext(DbContextOptions<WriteDbContext> options, ICurrentUserService? currentUserService = null)
         : base(options)
     {
-        _currentUserId = currentUserId;
+        _currentUserService = currentUserService;
     }
 
     public DbSet<Person> Persons { get; set; }
@@ -35,6 +35,7 @@ public class WriteDbContext : DbContext
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
+        var currentUserId = _currentUserService?.UserId ?? 0;
 
         // Manejar entidades creadas
         var createdEntries = ChangeTracker.Entries()
@@ -49,7 +50,7 @@ public class WriteDbContext : DbContext
                 entity.CreatedAt = now;
 
             if (entity.CreatedBy == 0)
-                entity.CreatedBy = _currentUserId;
+                entity.CreatedBy = currentUserId;
 
             if (entity is IModified modifiedEntity)
             {
@@ -57,7 +58,7 @@ public class WriteDbContext : DbContext
                     modifiedEntity.UpdatedAt = now;
 
                 if (modifiedEntity.UpdatedBy == 0)
-                    modifiedEntity.UpdatedBy = _currentUserId;
+                    modifiedEntity.UpdatedBy = currentUserId;
             }
         }
 
@@ -71,8 +72,8 @@ public class WriteDbContext : DbContext
 
             // Siempre actualizar la fecha/usuario de modificación para cambios reales
             entity.UpdatedAt = now;
-            if (_currentUserId != 0)
-                entity.UpdatedBy = _currentUserId;
+            if (currentUserId != 0)
+                entity.UpdatedBy = currentUserId;
         }
 
         return base.SaveChangesAsync(cancellationToken);
