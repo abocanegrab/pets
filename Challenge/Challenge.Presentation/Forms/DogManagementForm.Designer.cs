@@ -43,11 +43,16 @@ namespace Challenge.Presentation.Forms
             lblSearch = new Label();
             grpList = new GroupBox();
             dgvDogs = new DataGridView();
+            pnlPagination = new Panel();
+            btnPrevious = new Button();
+            lblPaginationInfo = new Label();
+            btnNext = new Button();
             grpData.SuspendLayout();
             grpActions.SuspendLayout();
             grpSearch.SuspendLayout();
             grpList.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvDogs).BeginInit();
+            pnlPagination.SuspendLayout();
             SuspendLayout();
             //
             // lblTitle
@@ -325,12 +330,63 @@ namespace Challenge.Presentation.Forms
             dgvDogs.TabIndex = 0;
             dgvDogs.CellClick += dgvDogs_CellClick;
             //
+            // pnlPagination
+            //
+            pnlPagination.BackColor = Color.White;
+            pnlPagination.BorderStyle = BorderStyle.FixedSingle;
+            pnlPagination.Controls.Add(btnPrevious);
+            pnlPagination.Controls.Add(lblPaginationInfo);
+            pnlPagination.Controls.Add(btnNext);
+            pnlPagination.Location = new Point(420, 520);
+            pnlPagination.Name = "pnlPagination";
+            pnlPagination.Size = new Size(750, 50);
+            pnlPagination.TabIndex = 5;
+            //
+            // btnPrevious
+            //
+            btnPrevious.BackColor = Color.FromArgb(0, 120, 215);
+            btnPrevious.FlatStyle = FlatStyle.Flat;
+            btnPrevious.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            btnPrevious.ForeColor = Color.White;
+            btnPrevious.Location = new Point(10, 10);
+            btnPrevious.Name = "btnPrevious";
+            btnPrevious.Size = new Size(100, 30);
+            btnPrevious.TabIndex = 0;
+            btnPrevious.Text = "◀ Anterior";
+            btnPrevious.UseVisualStyleBackColor = false;
+            btnPrevious.Click += btnPrevious_Click;
+            //
+            // lblPaginationInfo
+            //
+            lblPaginationInfo.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            lblPaginationInfo.Location = new Point(120, 10);
+            lblPaginationInfo.Name = "lblPaginationInfo";
+            lblPaginationInfo.Size = new Size(510, 30);
+            lblPaginationInfo.TabIndex = 1;
+            lblPaginationInfo.Text = "Página 1 de 1";
+            lblPaginationInfo.TextAlign = ContentAlignment.MiddleCenter;
+            //
+            // btnNext
+            //
+            btnNext.BackColor = Color.FromArgb(0, 120, 215);
+            btnNext.FlatStyle = FlatStyle.Flat;
+            btnNext.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            btnNext.ForeColor = Color.White;
+            btnNext.Location = new Point(640, 10);
+            btnNext.Name = "btnNext";
+            btnNext.Size = new Size(100, 30);
+            btnNext.TabIndex = 2;
+            btnNext.Text = "Siguiente ▶";
+            btnNext.UseVisualStyleBackColor = false;
+            btnNext.Click += btnNext_Click;
+            //
             // DogManagementForm
             //
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(245, 245, 245);
-            ClientSize = new Size(1190, 530);
+            ClientSize = new Size(1190, 590);
+            Controls.Add(pnlPagination);
             Controls.Add(grpList);
             Controls.Add(grpSearch);
             Controls.Add(grpActions);
@@ -348,6 +404,7 @@ namespace Challenge.Presentation.Forms
             grpSearch.PerformLayout();
             grpList.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvDogs).EndInit();
+            pnlPagination.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -379,5 +436,9 @@ namespace Challenge.Presentation.Forms
         private Button btnRefresh;
         private GroupBox grpList;
         private DataGridView dgvDogs;
+        private Panel pnlPagination;
+        private Button btnPrevious;
+        private Label lblPaginationInfo;
+        private Button btnNext;
     }
 }

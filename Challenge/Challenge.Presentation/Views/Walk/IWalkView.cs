@@ -26,6 +26,7 @@ public interface IWalkView
     void EnableForm(bool enabled);
     void ShowMessage(string message, string title, bool isError);
     void ShowLoading(bool show);
+    void UpdatePaginationInfo(int currentPage, int totalPages, int totalRecords, bool hasPrevious, bool hasNext);
 
     // Eventos que el Presenter escuchará
     event EventHandler LoadRequested;
@@ -34,4 +35,6 @@ public interface IWalkView
     event EventHandler ClearRequested;
     event EventHandler SearchRequested;
     event EventHandler<int> WalkSelected;
+    event EventHandler PreviousPageRequested;
+    event EventHandler NextPageRequested;
 }

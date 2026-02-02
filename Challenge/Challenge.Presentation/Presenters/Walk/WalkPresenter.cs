@@ -23,6 +23,8 @@ public class WalkPresenter : IDisposable
     private readonly ILogger<WalkPresenter> _logger;
     private readonly ICurrentUserService _currentUserService;
     private CancellationTokenSource? _cts;
+    private int _currentPage = 1;
+    private const int PageSize = 20;
 
     public WalkPresenter(IWalkView view, IMediator mediator, ILogger<WalkPresenter> logger, ICurrentUserService currentUserService)
     {
@@ -38,6 +40,8 @@ public class WalkPresenter : IDisposable
         _view.ClearRequested += OnClearRequested;
         _view.SearchRequested += OnSearchRequested;
         _view.WalkSelected += OnWalkSelected;
+        _view.PreviousPageRequested += OnPreviousPageRequested;
+        _view.NextPageRequested += OnNextPageRequested;
     }
 
     public void Dispose()
@@ -75,8 +79,8 @@ public class WalkPresenter : IDisposable
 
             var query = new GetAllQuery<Data.Entities.Walk>("Dog", "Dog.Client", "WalkedByUser")
             {
-                PageSize = 20,
-                PageNumber = 1
+                PageSize = PageSize,
+                PageNumber = _currentPage
             };
             var result = await _mediator.Send(query, ct);
 
@@ -94,6 +98,12 @@ public class WalkPresenter : IDisposable
             }).OrderByDescending(w => w.WalkDate).ToList();
 
             _view.LoadWalks(viewModels);
+            _view.UpdatePaginationInfo(
+                result.Data.PageNumber,
+                result.Data.TotalPages,
+                result.Data.TotalCount,
+                result.Data.HasPreviousPage,
+                result.Data.HasNextPage);
         }
         catch (OperationCanceledException)
         {
@@ -411,5 +421,20 @@ public class WalkPresenter : IDisposable
             "Notes" => "Notas",
             _ => fieldName
         };
+    }
+
+    private async void OnPreviousPageRequested(object? sender, EventArgs e)
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            await LoadWalksAsync();
+        }
+    }
+
+    private async void OnNextPageRequested(object? sender, EventArgs e)
+    {
+        _currentPage++;
+        await LoadWalksAsync();
     }
 }

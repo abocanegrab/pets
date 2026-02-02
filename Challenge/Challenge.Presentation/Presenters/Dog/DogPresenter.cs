@@ -21,6 +21,8 @@ public class DogPresenter : IDisposable
     private readonly IMediator _mediator;
     private readonly ILogger<DogPresenter> _logger;
     private CancellationTokenSource? _cts;
+    private int _currentPage = 1;
+    private const int PageSize = 20;
 
     public DogPresenter(IDogView view, IMediator mediator, ILogger<DogPresenter> logger)
     {
@@ -35,6 +37,8 @@ public class DogPresenter : IDisposable
         _view.ClearRequested += OnClearRequested;
         _view.SearchRequested += OnSearchRequested;
         _view.DogSelected += OnDogSelected;
+        _view.PreviousPageRequested += OnPreviousPageRequested;
+        _view.NextPageRequested += OnNextPageRequested;
     }
 
     public void Dispose()
@@ -72,8 +76,8 @@ public class DogPresenter : IDisposable
 
             var query = new GetAllQuery<Data.Entities.Dog>("Client")
             {
-                PageSize = 20,
-                PageNumber = 1
+                PageSize = PageSize,
+                PageNumber = _currentPage
             };
             var result = await _mediator.Send(query, ct);
 
@@ -90,6 +94,12 @@ public class DogPresenter : IDisposable
             }).ToList();
 
             _view.LoadDogs(viewModels);
+            _view.UpdatePaginationInfo(
+                result.Data.PageNumber,
+                result.Data.TotalPages,
+                result.Data.TotalCount,
+                result.Data.HasPreviousPage,
+                result.Data.HasNextPage);
         }
         catch (OperationCanceledException)
         {
@@ -407,5 +417,20 @@ public class DogPresenter : IDisposable
             "SpecialInstructions" => "Instrucciones Especiales",
             _ => fieldName
         };
+    }
+
+    private async void OnPreviousPageRequested(object? sender, EventArgs e)
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            await LoadDogsAsync();
+        }
+    }
+
+    private async void OnNextPageRequested(object? sender, EventArgs e)
+    {
+        _currentPage++;
+        await LoadDogsAsync();
     }
 }

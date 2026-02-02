@@ -214,6 +214,13 @@ public partial class WalkManagementForm : Form, IWalkView
         Cursor = show ? Cursors.WaitCursor : Cursors.Default;
     }
 
+    public void UpdatePaginationInfo(int currentPage, int totalPages, int totalRecords, bool hasPrevious, bool hasNext)
+    {
+        lblPaginationInfo.Text = $"Página {currentPage} de {totalPages} (Total: {totalRecords} registros)";
+        btnPrevious.Enabled = hasPrevious && !_isLoading;
+        btnNext.Enabled = hasNext && !_isLoading;
+    }
+
     // Eventos para el Presenter
     public event EventHandler? LoadRequested;
     public event EventHandler? SaveRequested;
@@ -221,6 +228,8 @@ public partial class WalkManagementForm : Form, IWalkView
     public event EventHandler? ClearRequested;
     public event EventHandler? SearchRequested;
     public event EventHandler<int>? WalkSelected;
+    public event EventHandler? PreviousPageRequested;
+    public event EventHandler? NextPageRequested;
 
     // Handlers de botones - solo disparan eventos
     private void btnSave_Click(object sender, EventArgs e)
@@ -282,5 +291,17 @@ public partial class WalkManagementForm : Form, IWalkView
         {
             btnSearch_Click(sender, e);
         }
+    }
+
+    private void btnPrevious_Click(object sender, EventArgs e)
+    {
+        if (_isLoading) return;
+        PreviousPageRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void btnNext_Click(object sender, EventArgs e)
+    {
+        if (_isLoading) return;
+        NextPageRequested?.Invoke(this, EventArgs.Empty);
     }
 }

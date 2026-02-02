@@ -28,6 +28,7 @@ public interface IClientView
     void EnableForm(bool enabled);
     void ShowMessage(string message, string title, bool isError);
     void ShowLoading(bool show);
+    void UpdatePaginationInfo(int currentPage, int totalPages, int totalRecords, bool hasPrevious, bool hasNext);
 
     // Eventos que el Presenter escuchará
     event EventHandler LoadRequested;
@@ -36,4 +37,6 @@ public interface IClientView
     event EventHandler ClearRequested;
     event EventHandler SearchRequested;
     event EventHandler<int> ClientSelected;
+    event EventHandler PreviousPageRequested;
+    event EventHandler NextPageRequested;
 }

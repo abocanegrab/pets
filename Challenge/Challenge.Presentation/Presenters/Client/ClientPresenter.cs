@@ -21,6 +21,8 @@ public class ClientPresenter : IDisposable
     private readonly IMediator _mediator;
     private readonly ILogger<ClientPresenter> _logger;
     private CancellationTokenSource? _cts;
+    private int _currentPage = 1;
+    private const int PageSize = 20;
 
     public ClientPresenter(IClientView view, IMediator mediator, ILogger<ClientPresenter> logger)
     {
@@ -35,6 +37,8 @@ public class ClientPresenter : IDisposable
         _view.ClearRequested += OnClearRequested;
         _view.SearchRequested += OnSearchRequested;
         _view.ClientSelected += OnClientSelected;
+        _view.PreviousPageRequested += OnPreviousPageRequested;
+        _view.NextPageRequested += OnNextPageRequested;
     }
 
     public void Dispose()
@@ -71,8 +75,8 @@ public class ClientPresenter : IDisposable
 
             var query = new GetAllQuery<Data.Entities.Client>
             {
-                PageSize = 20,
-                PageNumber = 1
+                PageSize = PageSize,
+                PageNumber = _currentPage
             };
             var result = await _mediator.Send(query, ct);
 
@@ -91,6 +95,12 @@ public class ClientPresenter : IDisposable
             }).ToList();
 
             _view.LoadClients(viewModels);
+            _view.UpdatePaginationInfo(
+                result.Data.PageNumber,
+                result.Data.TotalPages,
+                result.Data.TotalCount,
+                result.Data.HasPreviousPage,
+                result.Data.HasNextPage);
         }
         catch (OperationCanceledException)
         {
@@ -367,5 +377,20 @@ public class ClientPresenter : IDisposable
             "ZipCode" => "Código Postal",
             _ => fieldName
         };
+    }
+
+    private async void OnPreviousPageRequested(object? sender, EventArgs e)
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            await LoadClientsAsync();
+        }
+    }
+
+    private async void OnNextPageRequested(object? sender, EventArgs e)
+    {
+        _currentPage++;
+        await LoadClientsAsync();
     }
 }
