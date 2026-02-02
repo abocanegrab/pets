@@ -1,8 +1,14 @@
 using System.Reflection;
 using Challenge.Business.Behaviors;
+using Challenge.Business.Features.Generic.Delete;
+using Challenge.Business.Features.Generic.GetAll;
+using Challenge.Business.Features.Generic.GetById;
 using Challenge.Business.Services;
+using Challenge.Core.Common;
 using Challenge.Core.Interfaces;
+using Challenge.Data.Entities;
 using FluentValidation;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Challenge.Business.Extensions;
@@ -26,6 +32,13 @@ public static class ServiceCollectionExtensions
             cfg.AddOpenBehavior(typeof(TransactionBehavior<,>));
         });
 
+        // Registrar handlers genéricos cerrados para entidades específicas
+        // MediatR 12+ requiere registro explícito de versiones cerradas de handlers genéricos
+        RegisterClosedGenericHandlers<Client>(services);
+        RegisterClosedGenericHandlers<Dog>(services);
+        RegisterClosedGenericHandlers<Walk>(services);
+        RegisterClosedGenericHandlers<User>(services);
+
         // FluentValidation - Registrar todos los validators del assembly
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
@@ -36,5 +49,24 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Registra handlers genéricos cerrados para una entidad específica
+    /// </summary>
+    private static void RegisterClosedGenericHandlers<TEntity>(IServiceCollection services)
+        where TEntity : class, IIdentifier
+    {
+        // GetAll
+        services.AddTransient<IRequestHandler<GetAllQuery<TEntity>, Result<List<TEntity>>>,
+            GetAllQueryHandler<TEntity>>();
+
+        // GetById
+        services.AddTransient<IRequestHandler<GetByIdQuery<TEntity>, Result<TEntity?>>,
+            GetByIdQueryHandler<TEntity>>();
+
+        // Delete
+        services.AddTransient<IRequestHandler<DeleteCommand<TEntity>, Result<bool>>,
+            DeleteCommandHandler<TEntity>>();
     }
 }

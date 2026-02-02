@@ -33,6 +33,15 @@ public class GetAllQueryHandler<TEntity> : IRequestHandler<GetAllQuery<TEntity>,
 
         IQueryable<TEntity> query = _context.Set<TEntity>().AsNoTracking();
 
+        // Aplicar includes si se especificaron
+        if (request.Includes != null && request.Includes.Length > 0)
+        {
+            foreach (var include in request.Includes)
+            {
+                query = query.Include(include);
+            }
+        }
+
         // Si la entidad hereda de BaseEntity, filtrar por IsActive
         if (typeof(BaseEntity).IsAssignableFrom(typeof(TEntity)))
         {

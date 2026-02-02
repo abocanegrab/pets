@@ -10,4 +10,15 @@ namespace Challenge.Business.Features.Generic.GetAll;
 public class GetAllQuery<TEntity> : IRequest<Result<List<TEntity>>>
     where TEntity : class, IIdentifier
 {
+    /// <summary>
+    /// Propiedades de navegación a incluir (Include)
+    /// </summary>
+    public string[] Includes { get; set; } = Array.Empty<string>();
+
+    public GetAllQuery() { }
+
+    public GetAllQuery(params string[] includes)
+    {
+        Includes = includes;
+    }
 }
