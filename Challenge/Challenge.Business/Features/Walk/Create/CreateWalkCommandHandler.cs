@@ -1,3 +1,4 @@
+using AutoMapper;
 using Challenge.Core.Common;
 using Challenge.Core.Exceptions;
 using Challenge.Data.Context;
@@ -13,13 +14,16 @@ namespace Challenge.Business.Features.Walk.Create;
 public class CreateWalkCommandHandler : IRequestHandler<CreateWalkCommand, Result<int>>
 {
     private readonly WriteDbContext _context;
+    private readonly IMapper _mapper;
     private readonly ILogger<CreateWalkCommandHandler> _logger;
 
     public CreateWalkCommandHandler(
         WriteDbContext context,
+        IMapper mapper,
         ILogger<CreateWalkCommandHandler> logger)
     {
         _context = context;
+        _mapper = mapper;
         _logger = logger;
     }
 
@@ -45,16 +49,8 @@ public class CreateWalkCommandHandler : IRequestHandler<CreateWalkCommand, Resul
             throw DomainException.NotFound("USER_NOT_FOUND", $"Usuario con ID {request.WalkedByUserId} no encontrado");
         }
 
-        var walk = new Data.Entities.Walk
-        {
-            DogId = request.DogId,
-            WalkDate = request.WalkDate,
-            DurationMinutes = request.DurationMinutes,
-            Distance = request.Distance,
-            Notes = request.Notes,
-            WalkedByUserId = request.WalkedByUserId,
-            IsActive = true
-        };
+        var walk = _mapper.Map<Data.Entities.Walk>(request);
+        walk.IsActive = true;
 
         await _context.Walks.AddAsync(walk, cancellationToken);
 

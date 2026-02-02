@@ -4,6 +4,7 @@ using Challenge.Business.Features.Generic.GetById;
 using Challenge.Business.Features.Walk.Create;
 using Challenge.Business.Features.Walk.Update;
 using Challenge.Core.Exceptions;
+using Challenge.Core.Interfaces;
 using Challenge.Presentation.ViewModels;
 using Challenge.Presentation.Views.Walk;
 using MediatR;
@@ -15,17 +16,20 @@ namespace Challenge.Presentation.Presenters.Walk;
 /// Presenter que maneja toda la lógica de WalkManagementForm
 /// La View solo notifica eventos, el Presenter decide qué hacer
 /// </summary>
-public class WalkPresenter
+public class WalkPresenter : IDisposable
 {
     private readonly IWalkView _view;
     private readonly IMediator _mediator;
     private readonly ILogger<WalkPresenter> _logger;
+    private readonly ICurrentUserService _currentUserService;
+    private CancellationTokenSource? _cts;
 
-    public WalkPresenter(IWalkView view, IMediator mediator, ILogger<WalkPresenter> logger)
+    public WalkPresenter(IWalkView view, IMediator mediator, ILogger<WalkPresenter> logger, ICurrentUserService currentUserService)
     {
         _view = view;
         _mediator = mediator;
         _logger = logger;
+        _currentUserService = currentUserService;
 
         // Suscribirse a los eventos de la View
         _view.LoadRequested += OnLoadRequested;
@@ -34,6 +38,20 @@ public class WalkPresenter
         _view.ClearRequested += OnClearRequested;
         _view.SearchRequested += OnSearchRequested;
         _view.WalkSelected += OnWalkSelected;
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+    private CancellationToken GetCancellationToken()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        return _cts.Token;
     }
 
     public async Task InitializeAsync()
@@ -49,14 +67,20 @@ public class WalkPresenter
 
     private async Task LoadWalksAsync()
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
-            var query = new GetAllQuery<Data.Entities.Walk>("Dog", "Dog.Client", "WalkedByUser");
-            var result = await _mediator.Send(query);
+            var query = new GetAllQuery<Data.Entities.Walk>("Dog", "Dog.Client", "WalkedByUser")
+            {
+                PageSize = 20,
+                PageNumber = 1
+            };
+            var result = await _mediator.Send(query, ct);
 
-            var viewModels = result.Data.Select(w => new WalkViewModel
+            var viewModels = result.Data.Items.Select(w => new WalkViewModel
             {
                 Id = w.Id,
                 DogId = w.DogId,
@@ -71,6 +95,10 @@ public class WalkPresenter
 
             _view.LoadWalks(viewModels);
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carga de paseos cancelada");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al cargar paseos");
@@ -84,18 +112,27 @@ public class WalkPresenter
 
     private async Task LoadDogsAsync()
     {
+        var ct = GetCancellationToken();
+
         try
         {
-            var query = new GetAllQuery<Data.Entities.Dog>("Client");
-            var result = await _mediator.Send(query);
+            var query = new GetAllQuery<Data.Entities.Dog>("Client")
+            {
+                IgnorePagination = true  // Load all for ComboBox
+            };
+            var result = await _mediator.Send(query, ct);
 
-            var dogs = result.Data.Select(d => (
+            var dogs = result.Data.Items.Select(d => (
                 d.Id,
                 Name: d.Name,
                 ClientName: d.Client != null ? $"{d.Client.FirstName} {d.Client.LastName}" : "N/A"
             )).ToList();
 
             _view.LoadDogs(dogs);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carga de perros cancelada");
         }
         catch (Exception ex)
         {
@@ -106,6 +143,8 @@ public class WalkPresenter
 
     private async void OnSaveRequested(object? sender, EventArgs e)
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.EnableForm(false);
@@ -140,10 +179,11 @@ public class WalkPresenter
                     WalkDate = _view.WalkDate,
                     DurationMinutes = duration,
                     Distance = distance,
-                    Notes = _view.Notes
+                    Notes = _view.Notes,
+                    WalkedByUserId = _currentUserService.UserId
                 };
 
-                await _mediator.Send(updateCommand);
+                await _mediator.Send(updateCommand, ct);
                 _view.ShowMessage("Paseo actualizado exitosamente", "Éxito", false);
             }
             else
@@ -155,15 +195,20 @@ public class WalkPresenter
                     WalkDate = _view.WalkDate,
                     DurationMinutes = duration,
                     Distance = distance,
-                    Notes = _view.Notes
+                    Notes = _view.Notes,
+                    WalkedByUserId = _currentUserService.UserId
                 };
 
-                await _mediator.Send(createCommand);
+                await _mediator.Send(createCommand, ct);
                 _view.ShowMessage("Paseo registrado exitosamente", "Éxito", false);
             }
 
             _view.ClearForm();
             await LoadWalksAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Guardado de paseo cancelado");
         }
         catch (DomainException ex)
         {
@@ -190,17 +235,23 @@ public class WalkPresenter
             return;
         }
 
+        var ct = GetCancellationToken();
+
         try
         {
             _view.EnableForm(false);
             _view.ShowLoading(true);
 
             var deleteCommand = new DeleteCommand<Data.Entities.Walk>(_view.SelectedWalkId.Value);
-            await _mediator.Send(deleteCommand);
+            await _mediator.Send(deleteCommand, ct);
 
             _view.ShowMessage("Paseo eliminado exitosamente", "Éxito", false);
             _view.ClearForm();
             await LoadWalksAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Eliminación de paseo cancelada");
         }
         catch (DomainException ex)
         {
@@ -232,16 +283,21 @@ public class WalkPresenter
             return;
         }
 
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
-            var query = new GetAllQuery<Data.Entities.Walk>("Dog", "Dog.Client", "WalkedByUser");
-            var result = await _mediator.Send(query);
+            var query = new GetAllQuery<Data.Entities.Walk>("Dog", "Dog.Client", "WalkedByUser")
+            {
+                IgnorePagination = true  // Search needs all results to filter
+            };
+            var result = await _mediator.Send(query, ct);
 
             // Filtrar en el cliente
             var searchText = _view.SearchText.ToLower();
-            var filtered = result.Data
+            var filtered = result.Data.Items
                 .Where(w =>
                     (w.Dog != null && w.Dog.Name.ToLower().Contains(searchText)) ||
                     (w.Dog?.Client != null &&
@@ -265,6 +321,10 @@ public class WalkPresenter
 
             _view.LoadWalks(filtered);
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Búsqueda de paseos cancelada");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al buscar paseos");
@@ -278,12 +338,14 @@ public class WalkPresenter
 
     private async void OnWalkSelected(object? sender, int walkId)
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
             var query = new GetByIdQuery<Data.Entities.Walk>(walkId);
-            var result = await _mediator.Send(query);
+            var result = await _mediator.Send(query, ct);
 
             if (result.Data != null)
             {
@@ -294,6 +356,10 @@ public class WalkPresenter
                 _view.Distance = result.Data.Distance.ToString();
                 _view.Notes = result.Data.Notes ?? string.Empty;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carga de paseo cancelada");
         }
         catch (Exception ex)
         {

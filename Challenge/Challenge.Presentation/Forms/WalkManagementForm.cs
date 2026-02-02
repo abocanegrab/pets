@@ -1,3 +1,4 @@
+using Challenge.Core.Interfaces;
 using Challenge.Presentation.Presenters.Walk;
 using Challenge.Presentation.ViewModels;
 using Challenge.Presentation.Views.Walk;
@@ -16,10 +17,10 @@ public partial class WalkManagementForm : Form, IWalkView
     private readonly WalkPresenter _presenter;
     private bool _isLoading;
 
-    public WalkManagementForm(IMediator mediator, ILogger<WalkPresenter> logger)
+    public WalkManagementForm(IMediator mediator, ILogger<WalkPresenter> logger, ICurrentUserService currentUserService)
     {
         InitializeComponent();
-        _presenter = new WalkPresenter(this, mediator, logger);
+        _presenter = new WalkPresenter(this, mediator, logger, currentUserService);
 
         // Configurar estilos del DataGridView
         ConfigureDataGridView();
@@ -121,15 +122,27 @@ public partial class WalkManagementForm : Form, IWalkView
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public string DurationMinutes
     {
-        get => txtDuration.Text;
-        set => txtDuration.Text = value;
+        get => nudDuration.Value.ToString();
+        set
+        {
+            if (int.TryParse(value, out int duration))
+                nudDuration.Value = duration;
+            else
+                nudDuration.Value = 0;
+        }
     }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public string Distance
     {
-        get => txtDistance.Text;
-        set => txtDistance.Text = value;
+        get => nudDistance.Value.ToString();
+        set
+        {
+            if (decimal.TryParse(value, out decimal distance))
+                nudDistance.Value = distance;
+            else
+                nudDistance.Value = 0;
+        }
     }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -174,8 +187,8 @@ public partial class WalkManagementForm : Form, IWalkView
         SelectedWalkId = null;
         cmbDog.SelectedIndex = -1;
         dtpWalkDate.Value = DateTime.Now;
-        txtDuration.Clear();
-        txtDistance.Clear();
+        nudDuration.Value = 0;
+        nudDistance.Value = 0;
         txtNotes.Clear();
         cmbDog.Focus();
     }

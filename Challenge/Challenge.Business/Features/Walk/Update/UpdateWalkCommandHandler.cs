@@ -1,3 +1,4 @@
+using AutoMapper;
 using Challenge.Core.Common;
 using Challenge.Core.Exceptions;
 using Challenge.Data.Context;
@@ -13,13 +14,16 @@ namespace Challenge.Business.Features.Walk.Update;
 public class UpdateWalkCommandHandler : IRequestHandler<UpdateWalkCommand, Result<bool>>
 {
     private readonly WriteDbContext _context;
+    private readonly IMapper _mapper;
     private readonly ILogger<UpdateWalkCommandHandler> _logger;
 
     public UpdateWalkCommandHandler(
         WriteDbContext context,
+        IMapper mapper,
         ILogger<UpdateWalkCommandHandler> logger)
     {
         _context = context;
+        _mapper = mapper;
         _logger = logger;
     }
 
@@ -59,12 +63,7 @@ public class UpdateWalkCommandHandler : IRequestHandler<UpdateWalkCommand, Resul
             }
         }
 
-        walk.DogId = request.DogId;
-        walk.WalkDate = request.WalkDate;
-        walk.DurationMinutes = request.DurationMinutes;
-        walk.Distance = request.Distance;
-        walk.Notes = request.Notes;
-        walk.WalkedByUserId = request.WalkedByUserId;
+        _mapper.Map(request, walk);
 
         _context.Walks.Update(walk);
 

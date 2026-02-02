@@ -15,11 +15,12 @@ namespace Challenge.Presentation.Presenters.Dog;
 /// Presenter que maneja toda la lógica de DogManagementForm
 /// La View solo notifica eventos, el Presenter decide qué hacer
 /// </summary>
-public class DogPresenter
+public class DogPresenter : IDisposable
 {
     private readonly IDogView _view;
     private readonly IMediator _mediator;
     private readonly ILogger<DogPresenter> _logger;
+    private CancellationTokenSource? _cts;
 
     public DogPresenter(IDogView view, IMediator mediator, ILogger<DogPresenter> logger)
     {
@@ -36,6 +37,20 @@ public class DogPresenter
         _view.DogSelected += OnDogSelected;
     }
 
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+    private CancellationToken GetCancellationToken()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        return _cts.Token;
+    }
+
     public async Task InitializeAsync()
     {
         await LoadClientsAsync();
@@ -49,14 +64,20 @@ public class DogPresenter
 
     private async Task LoadDogsAsync()
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
-            var query = new GetAllQuery<Data.Entities.Dog>("Client");
-            var result = await _mediator.Send(query);
+            var query = new GetAllQuery<Data.Entities.Dog>("Client")
+            {
+                PageSize = 20,
+                PageNumber = 1
+            };
+            var result = await _mediator.Send(query, ct);
 
-            var viewModels = result.Data.Select(d => new DogViewModel
+            var viewModels = result.Data.Items.Select(d => new DogViewModel
             {
                 Id = d.Id,
                 ClientId = d.ClientId,
@@ -69,6 +90,10 @@ public class DogPresenter
             }).ToList();
 
             _view.LoadDogs(viewModels);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carga de perros cancelada");
         }
         catch (Exception ex)
         {
@@ -83,13 +108,22 @@ public class DogPresenter
 
     private async Task LoadClientsAsync()
     {
+        var ct = GetCancellationToken();
+
         try
         {
-            var query = new GetAllQuery<Data.Entities.Client>();
-            var result = await _mediator.Send(query);
+            var query = new GetAllQuery<Data.Entities.Client>
+            {
+                IgnorePagination = true  // Load all for ComboBox
+            };
+            var result = await _mediator.Send(query, ct);
 
-            var clients = result.Data.Select(c => (c.Id, Name: $"{c.FirstName} {c.LastName}")).ToList();
+            var clients = result.Data.Items.Select(c => (c.Id, Name: $"{c.FirstName} {c.LastName}")).ToList();
             _view.LoadClients(clients);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carga de clientes cancelada");
         }
         catch (Exception ex)
         {
@@ -100,6 +134,8 @@ public class DogPresenter
 
     private async void OnSaveRequested(object? sender, EventArgs e)
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.EnableForm(false);
@@ -143,7 +179,7 @@ public class DogPresenter
                     SpecialInstructions = _view.SpecialInstructions
                 };
 
-                await _mediator.Send(updateCommand);
+                await _mediator.Send(updateCommand, ct);
                 _view.ShowMessage("Perro actualizado exitosamente", "Éxito", false);
             }
             else
@@ -159,12 +195,16 @@ public class DogPresenter
                     SpecialInstructions = _view.SpecialInstructions
                 };
 
-                await _mediator.Send(createCommand);
+                await _mediator.Send(createCommand, ct);
                 _view.ShowMessage("Perro creado exitosamente", "Éxito", false);
             }
 
             _view.ClearForm();
             await LoadDogsAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Guardado de perro cancelado");
         }
         catch (DomainException ex)
         {
@@ -191,17 +231,23 @@ public class DogPresenter
             return;
         }
 
+        var ct = GetCancellationToken();
+
         try
         {
             _view.EnableForm(false);
             _view.ShowLoading(true);
 
             var deleteCommand = new DeleteCommand<Data.Entities.Dog>(_view.SelectedDogId.Value);
-            await _mediator.Send(deleteCommand);
+            await _mediator.Send(deleteCommand, ct);
 
             _view.ShowMessage("Perro eliminado exitosamente", "Éxito", false);
             _view.ClearForm();
             await LoadDogsAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Eliminación de perro cancelada");
         }
         catch (DomainException ex)
         {
@@ -233,16 +279,21 @@ public class DogPresenter
             return;
         }
 
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
-            var query = new GetAllQuery<Data.Entities.Dog>("Client");
-            var result = await _mediator.Send(query);
+            var query = new GetAllQuery<Data.Entities.Dog>("Client")
+            {
+                IgnorePagination = true  // Search needs all results to filter
+            };
+            var result = await _mediator.Send(query, ct);
 
             // Filtrar en el cliente
             var searchText = _view.SearchText.ToLower();
-            var filtered = result.Data
+            var filtered = result.Data.Items
                 .Where(d =>
                     d.Name.ToLower().Contains(searchText) ||
                     d.Breed.ToLower().Contains(searchText) ||
@@ -264,6 +315,10 @@ public class DogPresenter
 
             _view.LoadDogs(filtered);
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Búsqueda de perros cancelada");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al buscar perros");
@@ -277,12 +332,14 @@ public class DogPresenter
 
     private async void OnDogSelected(object? sender, int dogId)
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
             var query = new GetByIdQuery<Data.Entities.Dog>(dogId);
-            var result = await _mediator.Send(query);
+            var result = await _mediator.Send(query, ct);
 
             if (result.Data != null)
             {
@@ -294,6 +351,10 @@ public class DogPresenter
                 _view.Weight = result.Data.Weight?.ToString() ?? string.Empty;
                 _view.SpecialInstructions = result.Data.SpecialInstructions ?? string.Empty;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carga de perro cancelada");
         }
         catch (Exception ex)
         {

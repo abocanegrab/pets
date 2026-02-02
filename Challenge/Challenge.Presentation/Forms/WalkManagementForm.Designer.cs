@@ -6,9 +6,10 @@ namespace Challenge.Presentation.Forms
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing)
             {
-                components.Dispose();
+                _presenter?.Dispose();
+                components?.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -21,9 +22,9 @@ namespace Challenge.Presentation.Forms
             grpData = new GroupBox();
             txtNotes = new TextBox();
             lblNotes = new Label();
-            txtDistance = new TextBox();
+            nudDistance = new NumericUpDown();
             lblDistance = new Label();
-            txtDuration = new TextBox();
+            nudDuration = new NumericUpDown();
             lblDuration = new Label();
             dtpWalkDate = new DateTimePicker();
             lblWalkDate = new Label();
@@ -62,9 +63,9 @@ namespace Challenge.Presentation.Forms
             //
             grpData.Controls.Add(txtNotes);
             grpData.Controls.Add(lblNotes);
-            grpData.Controls.Add(txtDistance);
+            grpData.Controls.Add(nudDistance);
             grpData.Controls.Add(lblDistance);
-            grpData.Controls.Add(txtDuration);
+            grpData.Controls.Add(nudDuration);
             grpData.Controls.Add(lblDuration);
             grpData.Controls.Add(dtpWalkDate);
             grpData.Controls.Add(lblWalkDate);
@@ -97,12 +98,14 @@ namespace Challenge.Presentation.Forms
             lblNotes.TabIndex = 8;
             lblNotes.Text = "Notas:";
             //
-            // txtDistance
+            // nudDistance
             //
-            txtDistance.Location = new Point(200, 180);
-            txtDistance.Name = "txtDistance";
-            txtDistance.Size = new Size(160, 23);
-            txtDistance.TabIndex = 7;
+            nudDistance.DecimalPlaces = 2;
+            nudDistance.Location = new Point(200, 180);
+            nudDistance.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            nudDistance.Name = "nudDistance";
+            nudDistance.Size = new Size(160, 23);
+            nudDistance.TabIndex = 7;
             //
             // lblDistance
             //
@@ -114,12 +117,13 @@ namespace Challenge.Presentation.Forms
             lblDistance.TabIndex = 6;
             lblDistance.Text = "Distancia (km):";
             //
-            // txtDuration
+            // nudDuration
             //
-            txtDuration.Location = new Point(20, 180);
-            txtDuration.Name = "txtDuration";
-            txtDuration.Size = new Size(160, 23);
-            txtDuration.TabIndex = 5;
+            nudDuration.Location = new Point(20, 180);
+            nudDuration.Maximum = new decimal(new int[] { 1440, 0, 0, 0 });
+            nudDuration.Name = "nudDuration";
+            nudDuration.Size = new Size(160, 23);
+            nudDuration.TabIndex = 5;
             //
             // lblDuration
             //
@@ -341,9 +345,9 @@ namespace Challenge.Presentation.Forms
         private Label lblDog;
         private DateTimePicker dtpWalkDate;
         private Label lblWalkDate;
-        private TextBox txtDuration;
+        private NumericUpDown nudDuration;
         private Label lblDuration;
-        private TextBox txtDistance;
+        private NumericUpDown nudDistance;
         private Label lblDistance;
         private TextBox txtNotes;
         private Label lblNotes;

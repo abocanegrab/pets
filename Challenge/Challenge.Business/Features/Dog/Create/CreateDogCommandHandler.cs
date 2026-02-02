@@ -1,3 +1,4 @@
+using AutoMapper;
 using Challenge.Core.Common;
 using Challenge.Core.Exceptions;
 using Challenge.Data.Context;
@@ -13,13 +14,16 @@ namespace Challenge.Business.Features.Dog.Create;
 public class CreateDogCommandHandler : IRequestHandler<CreateDogCommand, Result<int>>
 {
     private readonly WriteDbContext _context;
+    private readonly IMapper _mapper;
     private readonly ILogger<CreateDogCommandHandler> _logger;
 
     public CreateDogCommandHandler(
         WriteDbContext context,
+        IMapper mapper,
         ILogger<CreateDogCommandHandler> logger)
     {
         _context = context;
+        _mapper = mapper;
         _logger = logger;
     }
 
@@ -36,16 +40,8 @@ public class CreateDogCommandHandler : IRequestHandler<CreateDogCommand, Result<
             throw DomainException.NotFound("CLIENT_NOT_FOUND", $"Cliente con ID {request.ClientId} no encontrado");
         }
 
-        var dog = new Data.Entities.Dog
-        {
-            ClientId = request.ClientId,
-            Name = request.Name,
-            Breed = request.Breed,
-            Age = request.Age,
-            Weight = request.Weight,
-            SpecialInstructions = request.SpecialInstructions,
-            IsActive = true
-        };
+        var dog = _mapper.Map<Data.Entities.Dog>(request);
+        dog.IsActive = true;
 
         await _context.Dogs.AddAsync(dog, cancellationToken);
 

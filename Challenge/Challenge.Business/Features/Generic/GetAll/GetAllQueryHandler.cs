@@ -2,6 +2,7 @@ using Challenge.Core.Common;
 using Challenge.Core.Interfaces;
 using Challenge.Data.Context;
 using Challenge.Data.Entities;
+using Challenge.Models.Base;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -9,10 +10,10 @@ using Microsoft.Extensions.Logging;
 namespace Challenge.Business.Features.Generic.GetAll;
 
 /// <summary>
-/// Handler genérico para obtener todas las entidades
+/// Handler genérico para obtener todas las entidades con paginación
 /// Si la entidad hereda de BaseEntity, filtra por IsActive = true
 /// </summary>
-public class GetAllQueryHandler<TEntity> : IRequestHandler<GetAllQuery<TEntity>, Result<List<TEntity>>>
+public class GetAllQueryHandler<TEntity> : IRequestHandler<GetAllQuery<TEntity>, Result<PagedResponse<TEntity>>>
     where TEntity : class, IIdentifier
 {
     private readonly ReadDbContext _context;
@@ -26,10 +27,11 @@ public class GetAllQueryHandler<TEntity> : IRequestHandler<GetAllQuery<TEntity>,
         _logger = logger;
     }
 
-    public async Task<Result<List<TEntity>>> Handle(GetAllQuery<TEntity> request, CancellationToken cancellationToken)
+    public async Task<Result<PagedResponse<TEntity>>> Handle(GetAllQuery<TEntity> request, CancellationToken cancellationToken)
     {
         var entityName = typeof(TEntity).Name;
-        _logger.LogInformation("Consultando todas las entidades de tipo {EntityName}", entityName);
+        _logger.LogInformation("Consultando entidades de tipo {EntityName} - Página {PageNumber}, Tamaño {PageSize}",
+            entityName, request.PageNumber, request.PageSize);
 
         IQueryable<TEntity> query = _context.Set<TEntity>().AsNoTracking();
 
@@ -48,10 +50,32 @@ public class GetAllQueryHandler<TEntity> : IRequestHandler<GetAllQuery<TEntity>,
             query = query.Where(e => ((BaseEntity)(object)e).IsActive);
         }
 
-        var entities = await query.ToListAsync(cancellationToken);
+        // Obtener conteo total
+        var totalCount = await query.CountAsync(cancellationToken);
 
-        _logger.LogInformation("Se encontraron {Count} entidades de tipo {EntityName}", entities.Count, entityName);
+        // Si IgnorePagination está activado, retornar todos
+        List<TEntity> items;
+        if (request.IgnorePagination)
+        {
+            items = await query.ToListAsync(cancellationToken);
+            _logger.LogInformation("Se retornaron {Count} entidades de tipo {EntityName} (sin paginación)",
+                items.Count, entityName);
+        }
+        else
+        {
+            // Aplicar paginación
+            items = await query
+                .Skip(request.Skip)
+                .Take(request.PageSize)
+                .ToListAsync(cancellationToken);
 
-        return Result<List<TEntity>>.Success(entities);
+            _logger.LogInformation("Se retornaron {Count} de {TotalCount} entidades de tipo {EntityName} - Página {PageNumber}/{TotalPages}",
+                items.Count, totalCount, entityName, request.PageNumber,
+                (int)Math.Ceiling(totalCount / (double)request.PageSize));
+        }
+
+        var pagedResponse = new PagedResponse<TEntity>(items, totalCount, request.PageNumber, request.PageSize);
+
+        return Result<PagedResponse<TEntity>>.Success(pagedResponse);
     }
 }

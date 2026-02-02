@@ -15,11 +15,12 @@ namespace Challenge.Presentation.Presenters.Client;
 /// Presenter que maneja toda la lógica de ClientManagementForm
 /// La View solo notifica eventos, el Presenter decide qué hacer
 /// </summary>
-public class ClientPresenter
+public class ClientPresenter : IDisposable
 {
     private readonly IClientView _view;
     private readonly IMediator _mediator;
     private readonly ILogger<ClientPresenter> _logger;
+    private CancellationTokenSource? _cts;
 
     public ClientPresenter(IClientView view, IMediator mediator, ILogger<ClientPresenter> logger)
     {
@@ -36,6 +37,20 @@ public class ClientPresenter
         _view.ClientSelected += OnClientSelected;
     }
 
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+    private CancellationToken GetCancellationToken()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        return _cts.Token;
+    }
+
     public async Task InitializeAsync()
     {
         await LoadClientsAsync();
@@ -48,14 +63,20 @@ public class ClientPresenter
 
     private async Task LoadClientsAsync()
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
-            var query = new GetAllQuery<Data.Entities.Client>();
-            var result = await _mediator.Send(query);
+            var query = new GetAllQuery<Data.Entities.Client>
+            {
+                PageSize = 20,
+                PageNumber = 1
+            };
+            var result = await _mediator.Send(query, ct);
 
-            var viewModels = result.Data.Select(c => new ClientViewModel
+            var viewModels = result.Data.Items.Select(c => new ClientViewModel
             {
                 Id = c.Id,
                 FirstName = c.FirstName,
@@ -71,6 +92,10 @@ public class ClientPresenter
 
             _view.LoadClients(viewModels);
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carga de clientes cancelada");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al cargar clientes");
@@ -84,6 +109,8 @@ public class ClientPresenter
 
     private async void OnSaveRequested(object? sender, EventArgs e)
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.EnableForm(false);
@@ -105,7 +132,7 @@ public class ClientPresenter
                     ZipCode = _view.ZipCode
                 };
 
-                await _mediator.Send(updateCommand);
+                await _mediator.Send(updateCommand, ct);
                 _view.ShowMessage("Cliente actualizado exitosamente", "Éxito", false);
             }
             else
@@ -123,12 +150,16 @@ public class ClientPresenter
                     ZipCode = _view.ZipCode
                 };
 
-                await _mediator.Send(createCommand);
+                await _mediator.Send(createCommand, ct);
                 _view.ShowMessage("Cliente creado exitosamente", "Éxito", false);
             }
 
             _view.ClearForm();
             await LoadClientsAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Guardado de cliente cancelado");
         }
         catch (DomainException ex)
         {
@@ -155,17 +186,23 @@ public class ClientPresenter
             return;
         }
 
+        var ct = GetCancellationToken();
+
         try
         {
             _view.EnableForm(false);
             _view.ShowLoading(true);
 
             var deleteCommand = new DeleteCommand<Data.Entities.Client>(_view.SelectedClientId.Value);
-            await _mediator.Send(deleteCommand);
+            await _mediator.Send(deleteCommand, ct);
 
             _view.ShowMessage("Cliente eliminado exitosamente", "Éxito", false);
             _view.ClearForm();
             await LoadClientsAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Eliminación de cliente cancelada");
         }
         catch (DomainException ex)
         {
@@ -197,16 +234,21 @@ public class ClientPresenter
             return;
         }
 
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
-            var query = new GetAllQuery<Data.Entities.Client>();
-            var result = await _mediator.Send(query);
+            var query = new GetAllQuery<Data.Entities.Client>
+            {
+                IgnorePagination = true  // Search needs all results to filter
+            };
+            var result = await _mediator.Send(query, ct);
 
             // Filtrar en el cliente (en producción sería mejor hacer esto en el backend)
             var searchText = _view.SearchText.ToLower();
-            var filtered = result.Data
+            var filtered = result.Data.Items
                 .Where(c =>
                     c.FirstName.ToLower().Contains(searchText) ||
                     c.LastName.ToLower().Contains(searchText) ||
@@ -229,6 +271,10 @@ public class ClientPresenter
 
             _view.LoadClients(filtered);
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Búsqueda de clientes cancelada");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al buscar clientes");
@@ -242,12 +288,14 @@ public class ClientPresenter
 
     private async void OnClientSelected(object? sender, int clientId)
     {
+        var ct = GetCancellationToken();
+
         try
         {
             _view.ShowLoading(true);
 
             var query = new GetByIdQuery<Data.Entities.Client>(clientId);
-            var result = await _mediator.Send(query);
+            var result = await _mediator.Send(query, ct);
 
             if (result.Data != null)
             {
@@ -261,6 +309,10 @@ public class ClientPresenter
                 _view.State = result.Data.State;
                 _view.ZipCode = result.Data.ZipCode;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Carga de cliente cancelada");
         }
         catch (Exception ex)
         {

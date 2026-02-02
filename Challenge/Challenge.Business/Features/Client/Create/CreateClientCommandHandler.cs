@@ -1,3 +1,4 @@
+using AutoMapper;
 using Challenge.Core.Common;
 using Challenge.Core.Enums;
 using Challenge.Data.Context;
@@ -12,13 +13,16 @@ namespace Challenge.Business.Features.Client.Create;
 public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, Result<int>>
 {
     private readonly WriteDbContext _context;
+    private readonly IMapper _mapper;
     private readonly ILogger<CreateClientCommandHandler> _logger;
 
     public CreateClientCommandHandler(
         WriteDbContext context,
+        IMapper mapper,
         ILogger<CreateClientCommandHandler> logger)
     {
         _context = context;
+        _mapper = mapper;
         _logger = logger;
     }
 
@@ -26,19 +30,9 @@ public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, R
     {
         _logger.LogInformation("Creando cliente: {FirstName} {LastName}", request.FirstName, request.LastName);
 
-        var client = new Data.Entities.Client
-        {
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            PhoneNumber = request.PhoneNumber,
-            Email = request.Email,
-            Address = request.Address,
-            City = request.City,
-            State = request.State,
-            ZipCode = request.ZipCode,
-            PersonType = PersonType.Client,
-            IsActive = true
-        };
+        var client = _mapper.Map<Data.Entities.Client>(request);
+        client.PersonType = PersonType.Client;
+        client.IsActive = true;
 
         await _context.Clients.AddAsync(client, cancellationToken);
 

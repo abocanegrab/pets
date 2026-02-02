@@ -1,3 +1,4 @@
+using AutoMapper;
 using Challenge.Core.Common;
 using Challenge.Core.Exceptions;
 using Challenge.Data.Context;
@@ -13,13 +14,16 @@ namespace Challenge.Business.Features.Dog.Update;
 public class UpdateDogCommandHandler : IRequestHandler<UpdateDogCommand, Result<bool>>
 {
     private readonly WriteDbContext _context;
+    private readonly IMapper _mapper;
     private readonly ILogger<UpdateDogCommandHandler> _logger;
 
     public UpdateDogCommandHandler(
         WriteDbContext context,
+        IMapper mapper,
         ILogger<UpdateDogCommandHandler> logger)
     {
         _context = context;
+        _mapper = mapper;
         _logger = logger;
     }
 
@@ -47,12 +51,7 @@ public class UpdateDogCommandHandler : IRequestHandler<UpdateDogCommand, Result<
             }
         }
 
-        dog.ClientId = request.ClientId;
-        dog.Name = request.Name;
-        dog.Breed = request.Breed;
-        dog.Age = request.Age;
-        dog.Weight = request.Weight;
-        dog.SpecialInstructions = request.SpecialInstructions;
+        _mapper.Map(request, dog);
 
         _context.Dogs.Update(dog);
 

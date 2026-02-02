@@ -7,6 +7,7 @@ using Challenge.Business.Services;
 using Challenge.Core.Common;
 using Challenge.Core.Interfaces;
 using Challenge.Data.Entities;
+using Challenge.Models.Base;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,7 +59,7 @@ public static class ServiceCollectionExtensions
         where TEntity : class, IIdentifier
     {
         // GetAll
-        services.AddTransient<IRequestHandler<GetAllQuery<TEntity>, Result<List<TEntity>>>,
+        services.AddTransient<IRequestHandler<GetAllQuery<TEntity>, Result<PagedResponse<TEntity>>>,
             GetAllQueryHandler<TEntity>>();
 
         // GetById
