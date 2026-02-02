@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Challenge.Data\Challenge.Data.csproj" />
     <ProjectReference Include="..\Challenge.Models\Challenge.Models.csproj" />
+    <ProjectReference Include="..\Challenge.Core\Challenge.Core.csproj" />
   </ItemGroup>
 
 </Project>
